@@ -1,18 +1,14 @@
-import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import styled from "styled-components";
-
-// const Wrapper = styled.div`
-//   max-width: 100%;
-//   display: flex;
-//   justify-content: center;
-//   align-items: center;
-// `;
-
+import { useQuery } from "react-query";
+import { fetchCoins } from "../api";
+import { Helmet } from "react-helmet";
+import { useRecoilState } from "recoil";
+import { isDarkAtom } from "../atoms";
 const Container = styled.div`
   padding: 0 20px;
-  
-  
+  max-width: 480px;
+  margin: 0 auto;
 `;
 const Header = styled.header`
   display: flex;
@@ -36,7 +32,7 @@ const Coin = styled.li`
   border-radius: 15px;
   margin-bottom: 10px;
   color: ${(props) => props.theme.textColor};
-  background-color: #fff;
+  background-color: ${(props) => props.theme.itemColor};
 
   a {
     transition: color 0.2s ease-in-out;
@@ -65,7 +61,7 @@ const CoinImg = styled.img`
   margin-right: 10px;
 `;
 
-interface CoinInterface {
+interface ICoin {
   id: string;
   name: string;
   symbol: string;
@@ -73,52 +69,54 @@ interface CoinInterface {
   is_new: boolean;
   is_active: boolean;
   type: string;
+  [key: string]: any;
 }
-
+interface RouteParams {
+  coinId: string;
+  [key: string]: string | undefined;
+}
 function Coins() {
-  const [coins, setCoins] = useState<CoinInterface[]>([]);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    (async () => {
-      const response = await fetch("https://api.coinpaprika.com/v1/coins");
-      const json = await response.json();
-      setCoins(json.slice(0, 100));
-      setLoading(false);
-    })();
-  }, []);
+  const { coinId } = useParams<RouteParams>();
+
+  const [isDarkMode, setIsDarkMode] = useRecoilState(isDarkAtom)
+
+  const modeToggle = ()=>{
+    setIsDarkMode(prev=> !prev)
+  }
+
+  const { isLoading, data } = useQuery<ICoin>("allCoins", fetchCoins);
 
   return (
-    
-      <Container>
-        <Header>
-          <Title>Coins</Title>
-        </Header>
-
-        <Body>
-          <CoinList>
-            {loading ? (
-              <Loading>Loading</Loading>
-            ) : (
-              coins?.map((coin) => (
-                <Coin key={coin.id}>
-                  <Link
-                    to={{
-                      pathname: `/${coin.id}`,
-                    }}
-                    state = {{name: coin.name}}
-                  >
-                    <CoinImg
-                      src={`https://coinicons-api.vercel.app/api/icon/${coin.symbol.toLowerCase()}`}
-                    />
-                    {coin.name} &rarr;
-                  </Link>
-                </Coin>
-              ))
-            )}
-          </CoinList>
-        </Body>
-      </Container>
-    
+    <Container>
+      <Helmet>
+        <title>CryptoCurrency</title>
+      </Helmet>
+      <Header>
+        <Title>Coins</Title>
+        <button onClick={modeToggle}>toggleMode</button>
+      </Header>
+      <Body>
+        <CoinList>
+          {isLoading ? (
+            <Loading>Loading</Loading>
+          ) : (
+            data?.slice(0, 100).map((coin: any) => (
+              <Coin key={coin.id}>
+                <Link
+                  to={{
+                    pathname: `/${coin.id}`,
+                  }}
+                  state={{ name: coin.name }}
+                >
+                  {/* <img src={`https://cryptoicon-api.vercel.app/api/icon/${coin.symbol}`} /> */}
+                  {coin.name} &rarr;
+                </Link>
+              </Coin>
+            ))
+          )}
+        </CoinList>
+      </Body>
+    </Container>
   );
 }
 

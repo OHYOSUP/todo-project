@@ -1,9 +1,19 @@
 import { useEffect, useState } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { Link, useMatch } from "react-router-dom";
+import { useQuery } from "react-query";
+import { Route, Routes, useLocation, useParams } from "react-router-dom";
 import styled from "styled-components";
+import Chart from "./Chart";
+import Price from "./Price";
+import { fetchCoininfo, fetchCoinTickers } from "../api";
+import { Helmet } from "react-helmet";
+
 
 const Container = styled.div`
   padding: 0 20px;
+
+  max-width: 480px;
+  margin: 0 auto;
 `;
 const Header = styled.header`
   display: flex;
@@ -27,7 +37,7 @@ const Body = styled.div`
 `;
 
 const InfoWrapper = styled.div`
-  background-color: ${(props) => props.theme.brightBg};
+  background-color: ${(props) => props.theme.itemColor};
   padding: 12px;
   border-radius: 15px;
   margin: 0 auto;
@@ -52,10 +62,39 @@ const DescWrapper = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 20vh;
-  color: #fff;
+
+  color: ${(props) => props.theme.descTextColor};
   line-height: 22px;
   font-weight: 300;
+  overflow: scroll;
+  margin: 5vh 0;
+
+  span {
+    margin-top: 15px;
+  }
+  &::-webkit-scrollbar {
+    display: none;
+  }
+`;
+
+const Overview = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 15vh;
+  color: ${(props) => props.theme.textColor};
+`;
+const OverviewItem = styled.div<{ isActive: boolean }>`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 9vw;
+  color: ${(props) =>
+    props.isActive ? props.theme.accentColor : props.theme.textColor};
+  background-color: ${(props) => props.theme.itemColor};
+  padding: 12px;
+  border-radius: 15px;
+  margin: 0 auto;
 `;
 
 interface ITag {
@@ -86,6 +125,12 @@ interface IInfoData {
   first_data_at: string;
   last_data_at: string;
 }
+
+interface IQuotes {
+  USD: {
+    price: number;
+  };
+}
 interface IPriceData {
   id: string;
   name: string;
@@ -94,6 +139,7 @@ interface IPriceData {
   is_new: boolean;
   is_active: boolean;
   type: string;
+  quotes: IQuotes;
   logo: string;
   description: string;
   message: string;
@@ -109,68 +155,89 @@ interface IPriceData {
   total_supply: number;
   max_supply: number;
 }
+interface RouteParams {
+  coinId: string;
+  [key: string]: string | undefined;
+}
 
 function Coin() {
-  const { coinId } = useParams();
+  const { coinId } = useParams<RouteParams>();
   const { state } = useLocation();
-  const [info, setInfo] = useState<IInfoData>();
-  const [price, setPrice] = useState<IPriceData>();
+  const priceMatch = useMatch("/:coinId/price");
+  const chartMatch = useMatch("/:coinId/chart");
 
-  useEffect(() => {
-    (async () => {
-      const infoData = await (
-        await fetch(`https://api.coinpaprika.com/v1/coins/${coinId}`)
-      ).json();
-      console.log(info);
+  const { isLoading: infoLoading, data: infoData } = useQuery<IInfoData>(
+    ["info", coinId],
+    () => fetchCoininfo(coinId + "")
+  );
+  const { isLoading: tickersLoading, data: tickerData } = useQuery<IPriceData>(
+    ["tickers", coinId],
+    () => fetchCoinTickers(coinId + ""),
+    {
+      refetchInterval: 5000,
+    }
+  );
 
-      const priceData = await (
-        await fetch(`https://api.coinpaprika.com/v1/tickers/${coinId}`)
-      ).json();
-      console.log(price);
-
-      setInfo(infoData);
-      setPrice(priceData);
-    })();
-  }, []);
+  const loading = infoLoading || tickersLoading;
 
   return (
     <Container>
+      <Helmet>
+        <title>
+          {infoData?.name ? infoData?.name : loading ? "Loading" : infoData?.name}
+        </title>
+      </Helmet>
       <Header>
-        <Title>{state?.name || <Loading></Loading>}</Title>
+        <h1 className="text-teal-400 text-3xl">
+          {state?.name ? state.name : loading ? "loading..." : infoData?.name}
+        </h1>
       </Header>
       <Body>
         <InfoWrapper>
           <div>
             <div>
               <span>RANK : </span>
-              <span>{info?.rank}</span>
+              <span>{infoData?.rank}</span>
             </div>
             <div>
               <span>SYMBOL : </span>
-              <span>{info?.symbol}</span>
+              <span>{infoData?.symbol}</span>
             </div>
             <div>
-              <span>OPEN SOURCE : </span>
-              <span>{info?.open_source ? "YES" : "NO"}</span>
+              <span>Price : </span>
+              <span>${tickerData?.quotes.USD.price.toFixed(3)}</span>
             </div>
           </div>
         </InfoWrapper>
         <DescWrapper>
-          <span>{info?.description}</span>
+          <span className="descSpan">{infoData?.description}</span>
         </DescWrapper>
         <InfoWrapper>
           <div>
             <div>
               <span>TOTAL SUPLY: </span>
-              <span>{price?.total_supply}</span>
+              <span>{tickerData?.total_supply}</span>
             </div>
             <div>
               <span>MAX SUPPLY: </span>
-              <span>{price?.max_supply}</span>
+              <span>{tickerData?.max_supply}</span>
             </div>
           </div>
         </InfoWrapper>
       </Body>
+
+      <Overview>
+        <OverviewItem isActive={chartMatch !== null ? true : false}>
+          <Link to={`/${coinId}/chart`}>Chart</Link>
+        </OverviewItem>
+        <OverviewItem isActive={priceMatch !== null ? true : false}>
+          <Link to={`/${coinId}/price`}>Price</Link>
+        </OverviewItem>
+      </Overview>
+      <Routes>
+        <Route path="chart" element={<Chart coinId={coinId as string} />} />
+        <Route path="price" element={<Price />} />
+      </Routes>
     </Container>
   );
 }

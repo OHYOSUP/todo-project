@@ -1,20 +1,28 @@
-import React from "react";
+import { RecoilRoot } from "recoil";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import "./index.css";
 import reportWebVitals from "./reportWebVitals";
-import { ThemeProvider } from "styled-components";
-import { theme } from "./theme";
 import { BrowserRouter } from "react-router-dom";
+import { QueryClientProvider, QueryClient } from "react-query";
+import { ThemeProvider } from "styled-components";
+import { darkTheme } from "./theme";
+
+const queryClient = new QueryClient();
 
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
 );
 root.render(
-  <BrowserRouter>
-    <ThemeProvider theme={theme}>
-      <App />
-    </ThemeProvider>
-  </BrowserRouter>
+  <RecoilRoot>
+    <BrowserRouter>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider theme={darkTheme}>
+          <App />
+        </ThemeProvider>
+      </QueryClientProvider>
+    </BrowserRouter>
+  </RecoilRoot>
 );
 
 // If you want to start measuring performance in your app, pass a function

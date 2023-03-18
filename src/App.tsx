@@ -1,9 +1,10 @@
 import Router from "./Router";
+import { ReactQueryDevtools } from "react-query/devtools";
+import { useState } from "react";
 import { createGlobalStyle } from "styled-components";
-
-function App() {
-  const GlobalStyle = createGlobalStyle`
-
+import { useRecoilValue } from "recoil";
+import { isDarkAtom } from "./atoms";
+const GlobalStyle = createGlobalStyle`
 @import url('https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@200;400&display=swap');
 
 html, body, div, span, applet, object, iframe,
@@ -58,15 +59,25 @@ text-decoration: none;
 color:inherit;
 }
 body{
-background-color: ${(props) => props.theme.bgColor};
-
+  background-color:${(props) => props.theme.bgColor};
+  color:${(props) => props.theme.textColor};
 }
 `;
 
+function App() {
+  const [isDark, setIsDark] = useState(false);
+
+  
+
+  const toggleMode = () => {
+    setIsDark((prev) => !prev);
+  };
   return (
     <>
+      <button onClick={toggleMode}>MODE</button>
       <GlobalStyle />
-      <Router />
+      <Router toggleMode={toggleMode} />
+      <ReactQueryDevtools initialIsOpen={false} />
     </>
   );
 }
